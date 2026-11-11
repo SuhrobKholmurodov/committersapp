@@ -1,33 +1,67 @@
-import type { Committer } from "@/entities/committer";
-import { countryPath } from "@/entities/country";
-import { SITE_LANGUAGE } from "@/shared/config";
+import { avatarUrl, type Committer } from "@/entities/committer";
+import {
+  continentName,
+  continentPath,
+  countryHeadingLocation,
+  countryLocation,
+  countryOrigin,
+  countryPath,
+  isWorldwide,
+  type Country,
+} from "@/entities/country";
+import { AUTHOR, SITE_LANGUAGE } from "@/shared/config";
 import {
   WEBSITE_ID,
   absoluteUrl,
   breadcrumbNode,
   type JsonLdNode,
 } from "@/shared/seo";
+import type { BreadcrumbItem } from "@/shared/ui/Breadcrumbs";
 
 const STRUCTURED_USERS_LIMIT = 10;
+const TITLE_LIMIT = 70;
+const DESCRIPTION_LIMIT = 160;
 
-export const buildCountryHeading = (countryName: string) =>
-  `Top GitHub Committers in ${countryName}`;
+export const buildCountryHeading = (country: Country) =>
+  `Top GitHub Committers ${countryHeadingLocation(country)}`;
 
-export const buildCountryTitle = (countryName: string, year: number) =>
-  `Top GitHub Committers in ${countryName} (${year}) – Most Active Developers`;
+export const buildCountryTitle = (country: Country, year: number) => {
+  const base = `${buildCountryHeading(country)} (${year})`;
+  const full = `${base} – Most Active Developers`;
+  return full.length <= TITLE_LIMIT ? full : base;
+};
 
-export const buildCountryDescription = (countryName: string, usersCount: number) => {
-  const subject =
-    usersCount > 0
-      ? `the ${usersCount} most active GitHub users`
-      : "the most active GitHub users";
+export const buildCountryDescription = (country: Country, users: Committer[]) => {
+  const count = users.length;
+  const leader = users[0];
+  const subject = count > 0 ? `the ${count} most active GitHub users` : "the most active GitHub users";
+  const leaderText = leader ? `, led by ${leader.realname || leader.username}` : "";
+  const ranking = `Ranking of ${subject} ${countryLocation(country)} by public commits and contributions`;
+  const discover = ` Discover top open-source developers ${countryOrigin(country)}.`;
 
-  return `Ranking of ${subject} in ${countryName} by public commits and contributions. Discover top open-source developers and software engineers from ${countryName}.`;
+  const candidates = [
+    `${ranking}${leaderText}.${discover}`,
+    `${ranking}${leaderText}.`,
+    `${ranking}.${discover}`,
+  ];
+
+  return candidates.find((text) => text.length <= DESCRIPTION_LIMIT) ?? `${ranking}.`;
+};
+
+export const buildCountryBreadcrumbs = (country: Country): BreadcrumbItem[] => {
+  const continent = continentName(country.continent);
+
+  return [
+    { label: "Home", to: "/" },
+    ...(country.continent && continent
+      ? [{ label: continent, to: continentPath(country.continent) }]
+      : []),
+    { label: country.name },
+  ];
 };
 
 interface CountryJsonLdOptions {
-  slug: string;
-  countryName: string;
+  country: Country;
   title: string;
   description: string;
   users: Committer[];
@@ -35,15 +69,17 @@ interface CountryJsonLdOptions {
 }
 
 export const buildCountryJsonLd = ({
-  slug,
-  countryName,
+  country,
   title,
   description,
   users,
   updatedAt,
 }: CountryJsonLdOptions): JsonLdNode[] => {
-  const url = absoluteUrl(countryPath(slug));
+  const path = countryPath(country.slug);
+  const url = absoluteUrl(path);
   const breadcrumbId = `${url}#breadcrumb`;
+  const datasetName = `Most active GitHub users ${countryLocation(country)}`;
+  const dateModified = updatedAt?.toISOString();
 
   return [
     {
@@ -55,11 +91,11 @@ export const buildCountryJsonLd = ({
       inLanguage: SITE_LANGUAGE,
       isPartOf: { "@id": WEBSITE_ID },
       breadcrumb: { "@id": breadcrumbId },
-      ...(updatedAt && { dateModified: updatedAt.toISOString() }),
-      about: { "@type": "Country", name: countryName },
+      ...(dateModified && { dateModified }),
+      ...(!isWorldwide(country) && { about: { "@type": "Country", name: country.name } }),
       mainEntity: {
         "@type": "ItemList",
-        name: `Most active GitHub users in ${countryName}`,
+        name: datasetName,
         numberOfItems: users.length,
         itemListOrder: "https://schema.org/ItemListOrderDescending",
         itemListElement: users.slice(0, STRUCTURED_USERS_LIMIT).map((user, index) => ({
@@ -70,14 +106,41 @@ export const buildCountryJsonLd = ({
             name: user.realname || user.username,
             alternateName: user.username,
             url: user.profile,
-            image: user.avatar,
+            image: avatarUrl(user.avatar, 240),
           },
         })),
       },
     },
-    breadcrumbNode(breadcrumbId, [
-      { name: "Home", path: "/" },
-      { name: countryName, path: countryPath(slug) },
-    ]),
+    {
+      "@type": "Dataset",
+      "@id": `${url}#dataset`,
+      name: datasetName,
+      description,
+      url,
+      isAccessibleForFree: true,
+      ...(dateModified && { dateModified }),
+      ...(!isWorldwide(country) && {
+        spatialCoverage: { "@type": "Place", name: country.name },
+      }),
+      variableMeasured: ["Public commits", "Public contributions"],
+      creator: {
+        "@type": "Organization",
+        name: "committers.top",
+        url: "https://committers.top",
+      },
+      publisher: {
+        "@type": "Person",
+        name: AUTHOR.name,
+        url: AUTHOR.url,
+      },
+      includedInDataCatalog: { "@id": WEBSITE_ID },
+    },
+    breadcrumbNode(
+      breadcrumbId,
+      buildCountryBreadcrumbs(country).map((item) => ({
+        name: item.label,
+        path: item.to ?? path,
+      })),
+    ),
   ];
 };

@@ -3,6 +3,8 @@ export {
   useGetCountryCommittersQuery,
 } from "./api/committerApi";
 export {
+  avatarSrcSet,
+  avatarUrl,
   filterCommitters,
   isCommitterMode,
   isCommitterSort,

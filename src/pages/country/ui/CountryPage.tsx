@@ -8,11 +8,21 @@ import {
   useGetCountryCommittersQuery,
   type Committer,
 } from "@/entities/committer";
-import { formatCountrySlug, useGetCountriesQuery } from "@/entities/country";
+import {
+  CountryFlag,
+  countryLocation,
+  countryPath,
+  enrichCountry,
+  formatCountrySlug,
+  isWorldwide,
+  useGetCountriesQuery,
+  type Country,
+} from "@/entities/country";
 import { GitHubUserDialog } from "@/features/github-user-dialog";
 import { parseApiDate } from "@/shared/lib/format";
 import { useDebouncedValue, useInfiniteScroll } from "@/shared/lib/hooks";
 import { Seo } from "@/shared/seo";
+import { Breadcrumbs } from "@/shared/ui/Breadcrumbs";
 import { ErrorMessage } from "@/shared/ui/ErrorMessage";
 import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 import { FilterBar } from "@/widgets/committers-filter";
@@ -20,6 +30,7 @@ import { CommittersTable } from "@/widgets/committers-table";
 import { Header } from "@/widgets/header";
 import { NOT_FOUND_TITLE, NotFound } from "@/widgets/not-found";
 import {
+  buildCountryBreadcrumbs,
   buildCountryDescription,
   buildCountryHeading,
   buildCountryJsonLd,
@@ -28,10 +39,17 @@ import {
 import { useCommitterSearchParams } from "../model/useCommitterSearchParams";
 import { CommitterSearch } from "./CommitterSearch";
 import { CountrySummary } from "./CountrySummary";
+import { RelatedCountries } from "./RelatedCountries";
 
 const PAGE_SIZE = 20;
 const SEARCH_SYNC_DELAY = 300;
 const EMPTY_USERS: Committer[] = [];
+const EMPTY_COUNTRIES: Country[] = [];
+
+const buildHint = (country: Country) =>
+  isWorldwide(country)
+    ? "Showing the most active GitHub users worldwide. Rankings update approximately every 5 days."
+    : `Showing the most active GitHub users ${countryLocation(country)}. If you're not in the list, set your location to '${country.name}' in your GitHub profile. Rankings update approximately every 5 days.`;
 
 const CountryView = ({ slug }: { slug: string }) => {
   const { mode, sort, search, setMode, setSort, setSearch } = useCommitterSearchParams();
@@ -43,10 +61,13 @@ const CountryView = ({ slug }: { slug: string }) => {
     setSearch(debouncedQuery);
   }, [debouncedQuery, setSearch]);
 
-  const { data: countries, isSuccess: hasCountries } = useGetCountriesQuery();
-  const country = countries?.find((item) => item.slug === slug);
-  const isUnknownCountry = hasCountries && !country;
-  const countryName = country?.name ?? formatCountrySlug(slug);
+  const { data: countries = EMPTY_COUNTRIES, isSuccess: hasCountries } = useGetCountriesQuery();
+  const listedCountry = countries.find((item) => item.slug === slug);
+  const isUnknownCountry = hasCountries && !listedCountry;
+  const country = useMemo(
+    () => listedCountry ?? enrichCountry({ slug, name: formatCountrySlug(slug) }),
+    [listedCountry, slug],
+  );
 
   const { data, error, isLoading, isFetching, refetch } = useGetCountryCommittersQuery(
     isUnknownCountry ? skipToken : { country: slug, mode },
@@ -88,15 +109,13 @@ const CountryView = ({ slug }: { slug: string }) => {
     return !result.error;
   }, [refetch]);
 
-  const title = buildCountryTitle(
-    countryName,
-    (updatedAt ?? new Date()).getUTCFullYear(),
-  );
-  const description = buildCountryDescription(countryName, users.length);
+  const location = countryLocation(country);
+  const title = buildCountryTitle(country, (updatedAt ?? new Date()).getUTCFullYear());
+  const description = buildCountryDescription(country, users);
+  const breadcrumbs = useMemo(() => buildCountryBreadcrumbs(country), [country]);
   const jsonLd = useMemo(
-    () =>
-      buildCountryJsonLd({ slug, countryName, title, description, users, updatedAt }),
-    [slug, countryName, title, description, users, updatedAt],
+    () => buildCountryJsonLd({ country, title, description, users, updatedAt }),
+    [country, title, description, users, updatedAt],
   );
 
   if (isUnknownCountry) {
@@ -139,38 +158,31 @@ const CountryView = ({ slug }: { slug: string }) => {
         <div className="duration-700 animate-in fade-in slide-in-from-bottom-4">
           <CommittersTable
             users={visibleUsers}
-            countryName={countryName}
+            location={location}
             onUserSelect={setSelectedUser}
           />
           {hasMore && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
         </div>
-        <CountrySummary
-          countryName={countryName}
-          users={users}
-          mode={mode}
-          updatedAt={updatedAt}
-        />
+        <CountrySummary country={country} users={users} mode={mode} updatedAt={updatedAt} />
       </>
     );
   };
 
   return (
     <div className="relative min-h-screen p-4 mx-auto max-w-7xl">
-      <Seo
-        title={title}
-        description={description}
-        path={`/${slug}`}
-        jsonLd={jsonLd}
-      />
+      <Seo title={title} description={description} path={countryPath(slug)} jsonLd={jsonLd} />
 
       <div className="mb-[60px] sm:mb-[65px]">
         <Header
-          title={buildCountryHeading(countryName)}
-          hint={`Showing the most active GitHub users in ${countryName}. If you're not in the list, set your location to '${countryName}' in your GitHub profile. Rankings update approximately every 5 days.`}
+          title={buildCountryHeading(country)}
+          icon={<CountryFlag country={country} eager />}
+          hint={buildHint(country)}
         />
       </div>
 
       <div className="flex flex-col max-w-2xl gap-3 mx-auto">
+        <Breadcrumbs items={breadcrumbs} />
+
         <div className="flex items-center gap-3">
           <Link
             to="/"
@@ -179,7 +191,7 @@ const CountryView = ({ slug }: { slug: string }) => {
           >
             <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </Link>
-          <CommitterSearch value={query} countryName={countryName} onChange={setQuery} />
+          <CommitterSearch value={query} location={location} onChange={setQuery} />
         </div>
 
         <FilterBar
@@ -193,6 +205,8 @@ const CountryView = ({ slug }: { slug: string }) => {
       </div>
 
       <div className="w-full">{renderContent()}</div>
+
+      <RelatedCountries country={country} countries={countries} />
 
       {selectedUser && (
         <GitHubUserDialog

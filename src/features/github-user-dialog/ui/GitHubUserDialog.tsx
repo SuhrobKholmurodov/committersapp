@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import { avatarSrcSet, avatarUrl } from "@/entities/committer";
 import { useGetGitHubUserQuery } from "@/entities/github-user";
 import { formatNumber } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
@@ -62,7 +63,8 @@ export const GitHubUserDialog = ({
             <div className="space-y-4">
               <div className="flex items-center space-x-5">
                 <img
-                  src={user.avatar_url}
+                  src={avatarUrl(user.avatar_url, 80)}
+                  srcSet={avatarSrcSet(user.avatar_url, 80)}
                   alt={`${user.login} avatar`}
                   width={80}
                   height={80}

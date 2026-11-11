@@ -1,6 +1,7 @@
-import { countryPath, type Country } from "@/entities/country";
-import { SITE_LANGUAGE, SITE_NAME } from "@/shared/config";
+import { countryLocation, countryPath, isWorldwide, type Country } from "@/entities/country";
+import { AUTHOR, SITE_LANGUAGE, SITE_NAME } from "@/shared/config";
 import { WEBSITE_ID, absoluteUrl, type JsonLdNode } from "@/shared/seo";
+import { buildFaqJsonLd, buildHomeFaq } from "./faq";
 
 export const HOME_TITLE = "Top GitHub Committers by Country – Global Developer Ranking";
 
@@ -8,7 +9,7 @@ export const HOME_HEADING = "Top GitHub Contributors Worldwide";
 
 export const buildHomeDescription = (countriesCount: number) =>
   countriesCount > 0
-    ? `Explore the most active GitHub users in ${countriesCount} countries. Compare commits, contributions and open-source leaders from around the world.`
+    ? `Explore the most active GitHub users in ${countriesCount} countries and regions. Compare commits, contributions and open-source leaders from around the world.`
     : "Explore the most active GitHub users in every country. Compare commits, contributions and open-source leaders from around the world.";
 
 export const buildHomeJsonLd = (
@@ -25,6 +26,11 @@ export const buildHomeJsonLd = (
       name: SITE_NAME,
       description,
       inLanguage: SITE_LANGUAGE,
+      publisher: {
+        "@type": "Person",
+        name: AUTHOR.name,
+        url: AUTHOR.url,
+      },
     },
     {
       "@type": "CollectionPage",
@@ -41,10 +47,11 @@ export const buildHomeJsonLd = (
         itemListElement: countries.map((country, index) => ({
           "@type": "ListItem",
           position: index + 1,
-          name: `Top GitHub committers in ${country.name}`,
+          name: `Top GitHub committers ${countryLocation(country)}`,
           url: absoluteUrl(countryPath(country.slug)),
         })),
       },
     },
+    buildFaqJsonLd(buildHomeFaq(countries.filter((country) => !isWorldwide(country)).length)),
   ];
 };

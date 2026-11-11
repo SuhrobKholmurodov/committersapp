@@ -71,6 +71,40 @@ const buildSitemap = (siteUrl, pages) => {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
 };
 
+const buildLlmsTxt = ({ siteUrl, countries, continents, countryPath, continentPath }) => {
+  const link = (label, pagePath, note) =>
+    `- [${label}](${siteUrl}${pagePath})${note ? `: ${note}` : ""}`;
+
+  const sortedCountries = [...countries].sort((a, b) => a.name.localeCompare(b.name, "en"));
+
+  return [
+    "# CommittersTop",
+    "",
+    `> Rankings of the most active GitHub users in ${countries.filter((country) => country.slug !== "worldwide").length} countries and regions, plus a worldwide ranking, refreshed every few days.`,
+    "",
+    "CommittersTop lists the most active GitHub users of every country by public commits, public contributions and all contributions. Data comes from committers.top and public GitHub profiles. Every page is static HTML with structured data.",
+    "",
+    "## Main pages",
+    "",
+    link("Home", "/", "all countries, search and grouping by continent"),
+    link("Worldwide ranking", countryPath("worldwide"), "most active GitHub users in the world"),
+    link("Sitemap", "/sitemap.xml", "every page with its last update date"),
+    "",
+    "## Continents",
+    "",
+    ...continents.map((continent) =>
+      link(continent.name, continentPath(continent.slug), `top GitHub committers in ${continent.name}`),
+    ),
+    "",
+    "## Countries",
+    "",
+    ...sortedCountries
+      .filter((country) => country.slug !== "worldwide")
+      .map((country) => link(country.name, countryPath(country.slug))),
+    "",
+  ].join("\n");
+};
+
 const loadBuildEnv = () => {
   const fileEnv = loadEnv("production", ROOT_DIR, "");
 
@@ -88,8 +122,15 @@ const main = async () => {
   const startedAt = Date.now();
   loadBuildEnv();
   const serverEntry = pathToFileURL(path.join(SSR_DIR, "entry-server.js")).href;
-  const { fetchCountries, renderPage, countryPath, PRELOADED_DATA_ELEMENT_ID, SITE_URL } =
-    await import(serverEntry);
+  const {
+    fetchCountries,
+    renderPage,
+    countryPath,
+    continentPath,
+    CONTINENTS,
+    PRELOADED_DATA_ELEMENT_ID,
+    SITE_URL,
+  } = await import(serverEntry);
 
   const template = await readFile(path.join(DIST_DIR, "index.html"), "utf8");
   const countries = await fetchCountries();
@@ -98,7 +139,15 @@ const main = async () => {
     throw new Error("Countries list is empty, refusing to prerender");
   }
 
-  const paths = ["/", ...countries.map((country) => countryPath(country.slug)), NOT_FOUND_PATH];
+  const continentPaths = new Map(CONTINENTS.map((continent) => [continentPath(continent.slug), continent.slug]));
+  const countryByPath = new Map(countries.map((country) => [countryPath(country.slug), country]));
+
+  const paths = [
+    "/",
+    ...continentPaths.keys(),
+    ...countryByPath.keys(),
+    NOT_FOUND_PATH,
+  ];
 
   const pages = await runWithConcurrency(paths, CONCURRENCY, async (pagePath) => {
     const page = await renderPage(pagePath, countries);
@@ -108,18 +157,32 @@ const main = async () => {
     return page;
   });
 
-  const countryPages = pages.filter((page) => page.path !== "/" && page.path !== NOT_FOUND_PATH);
-  const latestUpdate = countryPages
-    .map((page) => page.lastModified)
-    .filter(Boolean)
-    .sort()
-    .at(-1);
+  const countryPages = pages.filter((page) => countryByPath.has(page.path));
+  const latestOf = (items) =>
+    items
+      .map((page) => page.lastModified)
+      .filter(Boolean)
+      .sort()
+      .at(-1) ?? null;
 
-  const sitemapPages = pages.map((page) =>
-    page.path === "/" ? { ...page, lastModified: latestUpdate ?? null } : page,
-  );
+  const sitemapPages = pages.map((page) => {
+    if (page.path === "/") return { ...page, lastModified: latestOf(countryPages) };
+
+    const continentSlug = continentPaths.get(page.path);
+    if (!continentSlug) return page;
+
+    const members = countryPages.filter(
+      (countryPage) => countryByPath.get(countryPage.path)?.continent === continentSlug,
+    );
+    return { ...page, lastModified: latestOf(members) };
+  });
 
   await writeFile(path.join(DIST_DIR, "sitemap.xml"), buildSitemap(SITE_URL, sitemapPages), "utf8");
+  await writeFile(
+    path.join(DIST_DIR, "llms.txt"),
+    buildLlmsTxt({ siteUrl: SITE_URL, countries, continents: CONTINENTS, countryPath, continentPath }),
+    "utf8",
+  );
   await rm(SSR_DIR, { recursive: true, force: true });
 
   const missingData = countryPages.filter((page) => !page.lastModified).map((page) => page.path);
@@ -128,7 +191,7 @@ const main = async () => {
   }
 
   console.log(
-    `Prerendered ${pages.length} pages and sitemap.xml in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`,
+    `Prerendered ${pages.length} pages and sitemap.xml, llms.txt in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`,
   );
 };
 

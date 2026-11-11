@@ -7,7 +7,14 @@ import {
   committerApi,
   type CountryCommittersArg,
 } from "@/entities/committer";
-import { countryApi, countryPath, type Country } from "@/entities/country";
+import {
+  CONTINENTS,
+  continentPath,
+  countryApi,
+  countryPath,
+  findContinent,
+  type Country,
+} from "@/entities/country";
 import { baseApi } from "@/shared/api";
 import { SITE_URL } from "@/shared/config";
 import { parseApiDate } from "@/shared/lib/format";
@@ -30,7 +37,7 @@ export interface PrerenderedPage {
   lastModified: string | null;
 }
 
-export { PRELOADED_DATA_ELEMENT_ID, SITE_URL, countryPath };
+export { CONTINENTS, PRELOADED_DATA_ELEMENT_ID, SITE_URL, continentPath, countryPath };
 
 const RETRY_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 1000;
@@ -106,7 +113,11 @@ export const renderPage = async (
   let status = 200;
   let lastModified: string | null = null;
 
-  if (path !== "/") {
+  const continentMatch = matchPath("/continent/:continent", path);
+
+  if (continentMatch) {
+    status = findContinent(continentMatch.params.continent) ? 200 : 404;
+  } else if (path !== "/") {
     const slug = matchPath("/:slug", path)?.params.slug;
     const isKnownCountry = Boolean(slug && countries.some((country) => country.slug === slug));
 

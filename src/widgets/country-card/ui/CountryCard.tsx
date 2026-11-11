@@ -3,11 +3,20 @@ import { Link } from "react-router-dom";
 import Tippy from "@tippyjs/react";
 import { ChevronRight, GitCommit, Medal, Users } from "lucide-react";
 import {
+  avatarSrcSet,
+  avatarUrl,
   summarizeCommitters,
   useGetCountryCommittersQuery,
   type Committer,
 } from "@/entities/committer";
-import { countryPath, type Country } from "@/entities/country";
+import {
+  CountryFlag,
+  WORLDWIDE_LABEL,
+  continentName,
+  countryPath,
+  isWorldwide,
+  type Country,
+} from "@/entities/country";
 import { formatNumber } from "@/shared/lib/format";
 
 const TOP_USERS_LIMIT = 3;
@@ -24,11 +33,20 @@ const Skeleton = ({ className }: { className: string }) => (
 
 interface CountryCardProps {
   country: Country;
-  flagUrl?: string;
+  fallbackFlagUrl?: string;
+  eagerFlag?: boolean;
   onUserClick: (user: Committer) => void;
 }
 
-export const CountryCard = ({ country, flagUrl, onUserClick }: CountryCardProps) => {
+export const CountryCard = ({
+  country,
+  fallbackFlagUrl,
+  eagerFlag = false,
+  onUserClick,
+}: CountryCardProps) => {
+  const subtitle = isWorldwide(country)
+    ? `${WORLDWIDE_LABEL} ranking`
+    : (continentName(country.continent) ?? "Country ranking");
   const { data, isLoading } = useGetCountryCommittersQuery({
     country: country.slug,
     mode: "all",
@@ -48,36 +66,19 @@ export const CountryCard = ({ country, flagUrl, onUserClick }: CountryCardProps)
     <Link
       to={countryPath(country.slug)}
       className="block group"
-      aria-label={`Top GitHub committers in ${country.name}`}
     >
       <article className="p-5 bg-white border rounded-2xl dark:bg-gray-900 hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-700 hover:-translate-y-1">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="relative">
-              {flagUrl ? (
-                <img
-                  src={flagUrl}
-                  width={40}
-                  height={28}
-                  className="object-cover w-10 border rounded shadow-sm h-7 dark:border-gray-800"
-                  alt={`${country.name} flag`}
-                  loading="lazy"
-                  decoding="async"
-                />
-              ) : (
-                <div className="flex items-center justify-center w-10 border rounded h-7 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-gray-800 dark:to-gray-700">
-                  <span className="text-xs font-bold text-gray-500" aria-hidden="true">
-                    🏳️
-                  </span>
-                </div>
-              )}
+              <CountryFlag country={country} fallbackUrl={fallbackFlagUrl} eager={eagerFlag} />
               <div className="absolute w-4 h-4 border-2 border-white rounded-full -bottom-1 -right-1 bg-gradient-to-r from-blue-500 to-indigo-500 dark:border-gray-900" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
                 {country.name}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{country.slug}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
             </div>
           </div>
 
@@ -177,7 +178,8 @@ export const CountryCard = ({ country, flagUrl, onUserClick }: CountryCardProps)
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <img
-                        src={user.avatar}
+                        src={avatarUrl(user.avatar, 32)}
+                        srcSet={avatarSrcSet(user.avatar, 32)}
                         width={32}
                         height={32}
                         className="w-8 h-8 border-2 border-white rounded-full shadow-sm dark:border-gray-800"
@@ -193,7 +195,7 @@ export const CountryCard = ({ country, flagUrl, onUserClick }: CountryCardProps)
                       <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
                         {user.username}
                       </p>
-                      <p className="flex items-center gap-1 text-xs text-gray-500">
+                      <p className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                         <GitCommit className="w-3 h-3" aria-hidden="true" />
                         {formatNumber(user.commits)} commits
                       </p>

@@ -29,8 +29,9 @@ export const AUTHOR = {
 } as const;
 
 export const OG_IMAGE = {
-  url: `${SITE_URL}/preview-image.png`,
-  width: 1424,
-  height: 752,
+  url: `${SITE_URL}/og-image.jpg`,
+  type: "image/jpeg",
+  width: 1200,
+  height: 630,
   alt: "CommittersTop — most active GitHub users by country",
 } as const;

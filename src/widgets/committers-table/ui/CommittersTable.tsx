@@ -1,4 +1,4 @@
-import type { Committer } from "@/entities/committer";
+import { avatarSrcSet, avatarUrl, type Committer } from "@/entities/committer";
 import { formatNumber } from "@/shared/lib/format";
 import {
   Table,
@@ -12,19 +12,19 @@ import {
 
 interface CommittersTableProps {
   users: Committer[];
-  countryName: string;
+  location: string;
   onUserSelect: (user: Committer) => void;
 }
 
 export const CommittersTable = ({
   users,
-  countryName,
+  location,
   onUserSelect,
 }: CommittersTableProps) => (
   <div className="relative overflow-x-auto">
     <Table className="w-full rounded-lg">
       <TableCaption className="sr-only">
-        Most active GitHub users in {countryName}
+        Most active GitHub users {location}
       </TableCaption>
       <TableHeader>
         <TableRow>
@@ -72,7 +72,8 @@ export const CommittersTable = ({
 
             <TableCell className="text-center">
               <img
-                src={user.avatar}
+                src={avatarUrl(user.avatar, 40)}
+                srcSet={avatarSrcSet(user.avatar, 40)}
                 alt={`${user.username} GitHub avatar`}
                 width={40}
                 height={40}

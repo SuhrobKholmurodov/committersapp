@@ -2,11 +2,11 @@ import { Search, X } from "lucide-react";
 
 interface CommitterSearchProps {
   value: string;
-  countryName: string;
+  location: string;
   onChange: (value: string) => void;
 }
 
-export const CommitterSearch = ({ value, countryName, onChange }: CommitterSearchProps) => (
+export const CommitterSearch = ({ value, location, onChange }: CommitterSearchProps) => (
   <div className="relative flex-1">
     <Search
       aria-hidden="true"
@@ -16,8 +16,8 @@ export const CommitterSearch = ({ value, countryName, onChange }: CommitterSearc
       type="text"
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      placeholder={`Search in ${countryName}...`}
-      aria-label={`Search GitHub users in ${countryName}`}
+      placeholder={`Search developers ${location}...`}
+      aria-label={`Search GitHub users ${location}`}
       className="w-full pl-12 pr-12 py-[11px] border rounded-2xl bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-800 dark:text-gray-200 shadow-sm"
     />
     {value && (

@@ -112,7 +112,10 @@ All endpoints are injected into a single RTK Query `baseApi`, so the app has one
 
 - Every route is **prerendered at build time** (`scripts/prerender.mjs`): the home page, a page for each country and `404.html`. Crawlers and social networks receive complete HTML with the title, description, canonical URL, Open Graph / Twitter tags and JSON-LD (`WebSite`, `CollectionPage`, `ItemList`, `BreadcrumbList`).
 - The prerendered data is embedded into the page and the client **hydrates** it, then refreshes the ranking in the background.
-- `sitemap.xml` is generated on every build with real `lastmod` dates taken from the ranking data.
+- Continent hub pages (`/continent/europe`, …), visible breadcrumbs (Home › Continent › Country) and "more rankings in this continent" blocks build a crawlable site hierarchy with strong internal linking.
+- Country metadata (ISO code, continent, grammatical name such as "in the United States") lives in `src/entities/country/model/profiles.ts`, so flags and continents are rendered into the static HTML without extra API calls. New countries fall back to the backend `/flags` endpoint.
+- `sitemap.xml` and `llms.txt` are generated on every build with real `lastmod` dates taken from the ranking data.
+- Titles and descriptions adapt to stay within ~70 / 160 characters, the Open Graph image is a 1200×630 JPEG (~75 KB) and favicons follow Google's 48px-multiple requirement.
 - `vercel.ts` enables clean URLs without trailing slashes; unknown URLs are served by `404.html` with a real `404` status and `noindex`.
 - Rankings are refreshed by the backend every few days, so redeploy (for example with a Vercel Deploy Hook on a schedule) to keep prerendered pages fresh.
 

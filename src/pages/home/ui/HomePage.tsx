@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
-import { ArrowDownAZ, ArrowUpAZ, Globe, Search } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowDownAZ, ArrowUpAZ, ChevronRight, Globe, Search } from "lucide-react";
 import type { Committer } from "@/entities/committer";
 import {
-  findCountryMeta,
+  continentPath,
+  isWorldwide,
   useGetCountriesQuery,
   useGetCountryMetaQuery,
   type Country,
@@ -17,6 +19,7 @@ import { Header } from "@/widgets/header";
 import {
   filterAndSortCountries,
   groupByContinent,
+  resolveFlagFallback,
   type SortDirection,
 } from "../lib/countries";
 import {
@@ -25,6 +28,7 @@ import {
   buildHomeDescription,
   buildHomeJsonLd,
 } from "../lib/seo";
+import { AboutRanking } from "./AboutRanking";
 import { CountryDirectory } from "./CountryDirectory";
 import { EmptyState } from "./EmptyState";
 import { HomeSkeleton } from "./HomeSkeleton";
@@ -38,7 +42,10 @@ const scrollToSection = (id: string) =>
 
 export const HomePage = () => {
   const { data: countries = EMPTY_COUNTRIES, isLoading } = useGetCountriesQuery();
-  const { data: countryMeta } = useGetCountryMetaQuery();
+  const hasUnknownCountries = countries.some((country) => !country.known);
+  const { data: countryMeta } = useGetCountryMetaQuery(undefined, {
+    skip: !hasUnknownCountries,
+  });
 
   const [selectedUser, setSelectedUser] = useState<Committer | null>(null);
   const [visibleCount, setVisibleCount] = useState(COUNTRIES_PER_PAGE);
@@ -79,7 +86,8 @@ export const HomePage = () => {
     onLoadMore: loadMore,
   });
 
-  const description = buildHomeDescription(countries.length);
+  const trackedCount = countries.filter((country) => !isWorldwide(country)).length;
+  const description = buildHomeDescription(trackedCount);
   const jsonLd = useMemo(
     () => buildHomeJsonLd(countries, description),
     [countries, description],
@@ -99,7 +107,7 @@ export const HomePage = () => {
     <CountryCard
       key={country.slug}
       country={country}
-      flagUrl={findCountryMeta(countryMeta, country)?.flagUrl}
+      fallbackFlagUrl={resolveFlagFallback(country, countryMeta)}
       onUserClick={setSelectedUser}
     />
   );
@@ -192,6 +200,16 @@ export const HomePage = () => {
                 <span className="px-3 py-1 text-xs font-bold text-gray-400 bg-gray-100 border rounded-full dark:bg-gray-800 dark:border-gray-700 whitespace-nowrap">
                   {group.countries.length} <span className="sm:hidden">countries</span>
                 </span>
+                {group.slug && (
+                  <Link
+                    to={continentPath(group.slug)}
+                    aria-label={`Top GitHub committers in ${group.name}`}
+                    className="flex items-center gap-1 text-sm font-medium text-blue-600 whitespace-nowrap dark:text-blue-400 hover:underline"
+                  >
+                    <span className="sm:hidden">View {group.name}</span>
+                    <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                  </Link>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-6 lg:grid-cols-2 md:grid-cols-2 sm:grid-cols-1">
                 {group.countries.map(renderCard)}
@@ -212,6 +230,8 @@ export const HomePage = () => {
       )}
 
       {!isLoading && <CountryDirectory countries={countries} />}
+
+      <AboutRanking countriesCount={trackedCount} />
 
       {isScrolled && !isLoading && (
         <div className="hidden sm:flex fixed bottom-[85px] right-6 z-50 flex-col gap-3 animate-fade-in-up">

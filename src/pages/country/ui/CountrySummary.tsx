@@ -1,4 +1,5 @@
 import { summarizeCommitters, type Committer, type CommitterMode } from "@/entities/committer";
+import { countryLocation, isWorldwide, type Country } from "@/entities/country";
 import { formatDate, formatNumber } from "@/shared/lib/format";
 
 const MODE_LABELS: Record<CommitterMode, string> = {
@@ -8,14 +9,15 @@ const MODE_LABELS: Record<CommitterMode, string> = {
 };
 
 interface CountrySummaryProps {
-  countryName: string;
+  country: Country;
   users: Committer[];
   mode: CommitterMode;
   updatedAt: Date | null;
 }
 
-export const CountrySummary = ({ countryName, users, mode, updatedAt }: CountrySummaryProps) => {
-  const { count, totalCommits, leader } = summarizeCommitters(users);
+export const CountrySummary = ({ country, users, mode, updatedAt }: CountrySummaryProps) => {
+  const { count, totalCommits, averageCommits, leader } = summarizeCommitters(users);
+  const location = countryLocation(country);
 
   return (
     <section
@@ -26,12 +28,13 @@ export const CountrySummary = ({ countryName, users, mode, updatedAt }: CountryS
         id="country-summary-title"
         className="mb-4 text-3xl font-bold dark:text-white"
       >
-        Most Active GitHub Users in {countryName}
+        Most Active GitHub Users {isWorldwide(country) ? "Worldwide" : location}
       </h2>
       <p className="leading-relaxed text-gray-600 dark:text-gray-400">
-        This leaderboard ranks the {formatNumber(count)} most active GitHub users
-        in {countryName} by {MODE_LABELS[mode]}. Together they have made{" "}
-        {formatNumber(totalCommits)} contributions
+        This leaderboard ranks the {formatNumber(count)} most active GitHub users{" "}
+        {location} by {MODE_LABELS[mode]}. Together they have made{" "}
+        {formatNumber(totalCommits)} contributions, an average of{" "}
+        {formatNumber(averageCommits)} per developer
         {leader && (
           <>
             , led by <strong>{leader.realname || leader.username}</strong> with{" "}
@@ -41,10 +44,12 @@ export const CountrySummary = ({ countryName, users, mode, updatedAt }: CountryS
         .
       </p>
       <p className="mt-4 leading-relaxed text-gray-600 dark:text-gray-400">
-        Rankings are based on the location set in each public GitHub profile and
-        are refreshed every few days.
-        {updatedAt && <> Last updated on {formatDate(updatedAt)}.</>} Not on the
-        list? Set your GitHub profile location to "{countryName}" to be included.
+        Rankings are based on public GitHub profiles and are refreshed every few
+        days.
+        {updatedAt && <> Last updated on {formatDate(updatedAt)}.</>}{" "}
+        {isWorldwide(country)
+          ? "The worldwide list includes developers from every country, regardless of the location in their profile."
+          : `Not on the list? Set your GitHub profile location to "${country.name}" to be included.`}
       </p>
     </section>
   );

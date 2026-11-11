@@ -7,10 +7,11 @@ import { cn } from "@/shared/lib/utils";
 interface HeaderProps {
   title: string;
   hint?: ReactNode;
+  icon?: ReactNode;
   compactTitle?: boolean;
 }
 
-export const Header = ({ title, hint, compactTitle = false }: HeaderProps) => (
+export const Header = ({ title, hint, icon, compactTitle = false }: HeaderProps) => (
   <header
     id="header-section"
     className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b dark:border-gray-800 h-[72px] sm:h-[64px] flex items-center"
@@ -18,6 +19,7 @@ export const Header = ({ title, hint, compactTitle = false }: HeaderProps) => (
     <div className="w-full px-4 mx-auto max-w-7xl">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
+          {icon && <span className="mr-1.5 shrink-0 sm:hidden">{icon}</span>}
           <h1
             className={cn(
               "text-[26px] font-bold dark:text-gray-50 truncate",

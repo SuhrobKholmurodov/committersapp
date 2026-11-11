@@ -1,5 +1,12 @@
 import { baseApi } from "@/shared/api";
-import type { Country } from "../model/types";
+import { enrichCountry } from "../lib/country";
+import type { Country, CountryResponse } from "../model/types";
+
+const isCountryResponse = (item: unknown): item is CountryResponse =>
+  typeof item === "object" &&
+  item !== null &&
+  typeof (item as CountryResponse).slug === "string" &&
+  typeof (item as CountryResponse).name === "string";
 
 export const countryApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -7,10 +14,7 @@ export const countryApi = baseApi.injectEndpoints({
       query: () => "countries",
       transformResponse: (response: unknown) =>
         Array.isArray(response)
-          ? response.filter(
-              (item): item is Country =>
-                typeof item?.slug === "string" && typeof item?.name === "string",
-            )
+          ? response.filter(isCountryResponse).map(enrichCountry)
           : [],
     }),
   }),

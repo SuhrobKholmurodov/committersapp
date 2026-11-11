@@ -13,7 +13,22 @@ const comparators: Record<CommitterSort, (a: Committer, b: Committer) => number>
   "alphabetical-desc": (a, b) => b.username.localeCompare(a.username, "en"),
 };
 
-export const isCommitterMode = (value: unknown): value is CommitterMode =>
+export const avatarUrl = (url: string, size: number) => {
+  if (!url) return url;
+
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("s", String(size));
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+};
+
+export const avatarSrcSet = (url: string, size: number) =>
+  [1, 2, 3].map((density) => `${avatarUrl(url, size * density)} ${density}x`).join(", ");
+
+export const isCommitterMode =(value: unknown): value is CommitterMode =>
   typeof value === "string" &&
   (COMMITTER_MODES as readonly string[]).includes(value);
 
