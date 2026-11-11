@@ -2,14 +2,32 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/check.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://committers.app/" />
+    <link rel="icon" type="image/png" href="/check.png" />
+    <link rel="apple-touch-icon" href="/check.png" />
+    <meta name="theme-color" content="#f9fafb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)" />
+    <meta name="author" content="Suhrob Kholmurodov" />
+    <meta property="og:locale" content="en_US" />
+    <link rel="preconnect" href="https://avatars.githubusercontent.com" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var isDark = stored
+            ? stored === "dark"
+            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.classList.toggle("dark", isDark);
+          document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+        } catch (error) {
+          document.documentElement.classList.remove("dark");
+        }
+      })();
+    </script>
   </head>
   <body class="bg-white dark:bg-gray-950">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/app/entry-client.tsx"></script>
   </body>
 </html>

@@ -1,10 +1,10 @@
 
 <p align="center">
-    <a href="https://github.com/SuhrobKholmurodov/committerstop-tj"><img src="https://img.shields.io/badge/status-active-brightgreen.svg"></a>
-    <a href="https://github.com/SuhrobKholmurodov/committerstop-tj/graphs/contributors"><img src="https://img.shields.io/github/contributors/SuhrobKholmurodov/committerstop-tj?color=blue"></a>
-    <a href="https://github.com/SuhrobKholmurodov/committerstop-tj/stargazers"><img src="https://img.shields.io/github/stars/SuhrobKholmurodov/committerstop-tj.svg?logo=github"></a>
-    <a href="https://github.com/SuhrobKholmurodov/committerstop-tj/network/members"><img src="https://img.shields.io/github/forks/SuhrobKholmurodov/committerstop-tj.svg?color=blue&logo=github"></a>
-    <img src="https://visitor-badge.laobi.icu/badge?page_id=SuhrobKholmurodov.committerstop-tj" alt="visitors"/>   
+    <a href="https://github.com/SuhrobKholmurodov/committerstop"><img src="https://img.shields.io/badge/status-active-brightgreen.svg"></a>
+    <a href="https://github.com/SuhrobKholmurodov/committerstop/graphs/contributors"><img src="https://img.shields.io/github/contributors/SuhrobKholmurodov/committerstop?color=blue"></a>
+    <a href="https://github.com/SuhrobKholmurodov/committerstop/stargazers"><img src="https://img.shields.io/github/stars/SuhrobKholmurodov/committerstop.svg?logo=github"></a>
+    <a href="https://github.com/SuhrobKholmurodov/committerstop/network/members"><img src="https://img.shields.io/github/forks/SuhrobKholmurodov/committerstop.svg?color=blue&logo=github"></a>
+    <img src="https://visitor-badge.laobi.icu/badge?page_id=SuhrobKholmurodov.committerstop" alt="visitors"/>   
 </p>
 
 ![Banner](https://capsule-render.vercel.app/api?type=venom&height=200&color=0:ff6b6b,100:4ecdc4&text=%20GitHub%20Committers&textBg=false&desc=(Top%20Active%20Developers%20Worldwide)&descAlign=79&fontAlign=50&descAlignY=70&fontColor=f7f5f5)
@@ -45,38 +45,84 @@ GitHub Committers is a responsive web application that displays the most active 
 
 ### Prerequisites
 
-- Node.js 18+
-- pnpm or npm
-- GitHub Personal Access Token (optional)
+- Node.js 20+
+- pnpm
 
 ## 📥 Setup and Installation
 
-### Frontend
-
 1. Navigate to the project directory:
    ```bash
-   cd committerstop-tj
+   cd committerstop
    ```
 
-2. Install the required npm packages:
+2. Install dependencies:
    ```bash
    pnpm install
    ```
 
-3. Start the development server:
+3. Copy `.env.example` to `.env.local` and fill in the values:
+   ```bash
+   API_URL=https://your-backend.vercel.app
+   API_KEY=generate-a-long-random-string
+   VITE_SITE_URL=https://committers.app
+   ```
+
+### Environment variables
+
+| Variable | Exposed to the browser | Description |
+| --- | --- | --- |
+| `API_URL` | No | Backend origin. Used by the `/api` proxy and by the prerender step |
+| `API_KEY` | No | Shared secret sent to the backend in the `x-api-key` header. Must match `API_KEY` of the backend |
+| `VITE_SITE_URL` | Yes | Public site URL used for canonical links, Open Graph and the sitemap |
+
+The browser never talks to the backend directly: it requests `/api/*` on the same origin. In development Vite proxies these requests, in production `vercel.ts` rewrites them to `API_URL` and adds the `x-api-key` header on Vercel's edge, so neither the backend URL nor the key ends up in the client bundle. Set `API_URL` and `API_KEY` in **Vercel → Project Settings → Environment Variables** for both Production and Preview.
+
+4. Start the development server:
    ```bash
    pnpm dev
    ```
 
+### Scripts
+
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Start the Vite dev server (client-side rendering) |
+| `pnpm build` | Type-check, build the client and SSR bundles, prerender every page and generate `sitemap.xml` |
+| `pnpm preview` | Serve the production build locally |
+| `pnpm lint` | Run ESLint |
+| `pnpm typecheck` | Run the TypeScript compiler |
+
+<h2>🏗 Architecture</h2>
+
+The source code follows [Feature-Sliced Design](https://feature-sliced.design/). A layer may only import from the layers below it.
+
+```
+src/
+├── app/        entry points (client + server), providers, routes, store, global styles
+├── pages/      home, country, not-found
+├── widgets/    header, footer, country card, continent nav, filter bar, committers table
+├── features/   theme toggle, go to top, GitHub user dialog
+├── entities/   country, committer, github-user (RTK Query endpoints, types, helpers)
+└── shared/     base API, config, hooks, formatting, SEO helpers, UI kit (shadcn/ui)
+```
+
+All endpoints are injected into a single RTK Query `baseApi`, so the app has one cache and one middleware.
+
+<h2>🔎 SEO</h2>
+
+- Every route is **prerendered at build time** (`scripts/prerender.mjs`): the home page, a page for each country and `404.html`. Crawlers and social networks receive complete HTML with the title, description, canonical URL, Open Graph / Twitter tags and JSON-LD (`WebSite`, `CollectionPage`, `ItemList`, `BreadcrumbList`).
+- The prerendered data is embedded into the page and the client **hydrates** it, then refreshes the ranking in the background.
+- `sitemap.xml` is generated on every build with real `lastmod` dates taken from the ranking data.
+- `vercel.ts` enables clean URLs without trailing slashes; unknown URLs are served by `404.html` with a real `404` status and `noindex`.
+- Rankings are refreshed by the backend every few days, so redeploy (for example with a Vercel Deploy Hook on a schedule) to keep prerendered pages fresh.
+
 <h2>📡 Data Fetching</h2>
 
 - **Committers Data**  
-  Scraped live from [committers.top](https://committers.top) using Redux Toolkit Query.  
-  Fetches HTML via `https://api.allorigins.win/raw?url=...` to bypass CORS and parses it to extract rankings of global developers.
+  Provided by the CommittersTop backend (`/countries`, `/committers/:country/:mode`, `/flags`), which aggregates data from [committers.top](https://committers.top).
 
 - **GitHub User Details**  
-  Pulled directly from the GitHub REST API.  
-  Uses an optional `VITE_GITHUB_TOKEN` to increase API rate limits.
+  Requested through the backend `/github-user/:username` endpoint.
 
 <h2 id=contributing>🤝 Contributing</h2>
 
@@ -91,5 +137,5 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 <div align="left">
     <a href="mailto:suhrob.kholmurodov@gmail.com"><img src="https://img.shields.io/badge/Email-30302f?style=flat-square&logo=gmail" alt="Email"></a>
-    <a href="https://github.com/SuhrobKholmurodov/committerstop-tj"><img src="https://img.shields.io/badge/View%20on%20GitHub-30302f?style=flat-square&logo=github" alt="GitHub"></a>
+    <a href="https://github.com/SuhrobKholmurodov/committerstop"><img src="https://img.shields.io/badge/View%20on%20GitHub-30302f?style=flat-square&logo=github" alt="GitHub"></a>
 </div>
