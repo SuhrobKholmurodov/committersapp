@@ -1,29 +1,33 @@
 import {
   deploymentEnv,
   routes,
-  type Rewrite,
+  type RouteType,
   type VercelConfig,
 } from "@vercel/config/v1";
+
+const responseHeaders = (src: string, headers: Record<string, string>): RouteType => ({
+  src,
+  headers,
+  continue: true,
+});
 
 const apiProxy = routes.rewrite("/api/(.*)", `${deploymentEnv("API_URL")}/$1`, {
   requestHeaders: {
     "x-api-key": deploymentEnv("API_KEY"),
   },
-}) as Rewrite;
+}) as RouteType;
 
 export const config: VercelConfig = {
   cleanUrls: true,
   trailingSlash: false,
-  rewrites: [apiProxy],
-  headers: [
-    routes.cacheControl("/assets/(.*)", {
-      public: true,
-      maxAge: "1 year",
-      immutable: true,
+  routes: [
+    responseHeaders("/(.*)", {
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
     }),
-    routes.header("/(.*)", [
-      { key: "X-Content-Type-Options", value: "nosniff" },
-      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-    ]),
+    responseHeaders("/assets/(.*)", {
+      "Cache-Control": "public, max-age=31536000, immutable",
+    }),
+    apiProxy,
   ],
 };
