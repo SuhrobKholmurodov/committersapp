@@ -24,9 +24,9 @@ import {
 } from "../lib/countries";
 import {
   HOME_HEADING,
-  HOME_TITLE,
   buildHomeDescription,
   buildHomeJsonLd,
+  buildHomeTitle,
 } from "../lib/seo";
 import { AboutRanking } from "./AboutRanking";
 import { CountryDirectory } from "./CountryDirectory";
@@ -87,10 +87,11 @@ export const HomePage = () => {
   });
 
   const trackedCount = countries.filter((country) => !isWorldwide(country)).length;
+  const title = buildHomeTitle(trackedCount, new Date().getUTCFullYear());
   const description = buildHomeDescription(trackedCount);
   const jsonLd = useMemo(
-    () => buildHomeJsonLd(countries, description),
-    [countries, description],
+    () => buildHomeJsonLd(countries, title, description),
+    [countries, title, description],
   );
 
   const handleSearchChange = (value: string) => {
@@ -122,7 +123,7 @@ export const HomePage = () => {
 
   return (
     <div className="relative min-h-screen p-4 mx-auto max-w-7xl">
-      <Seo title={HOME_TITLE} description={description} path="/" jsonLd={jsonLd} />
+      <Seo title={title} description={description} path="/" jsonLd={jsonLd} />
 
       <div className="mb-[60px] sm:mb-[65px]">
         <Header

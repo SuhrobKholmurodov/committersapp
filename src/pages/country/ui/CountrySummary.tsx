@@ -46,7 +46,13 @@ export const CountrySummary = ({ country, users, mode, updatedAt }: CountrySumma
       <p className="mt-4 leading-relaxed text-gray-600 dark:text-gray-400">
         Rankings are based on public GitHub profiles and are refreshed every few
         days.
-        {updatedAt && <> Last updated on {formatDate(updatedAt)}.</>}{" "}
+        {updatedAt && (
+          <>
+            {" "}
+            Last updated on{" "}
+            <time dateTime={updatedAt.toISOString()}>{formatDate(updatedAt)}</time>.
+          </>
+        )}{" "}
         {isWorldwide(country)
           ? "The worldwide list includes developers from every country, regardless of the location in their profile."
           : `Not on the list? Set your GitHub profile location to "${country.name}" to be included.`}

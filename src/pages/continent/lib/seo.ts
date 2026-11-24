@@ -16,11 +16,15 @@ import {
 export const buildContinentHeading = (continent: Continent) =>
   `Top GitHub Committers in ${continent.name}`;
 
-export const buildContinentTitle = (continent: Continent, countriesCount: number) =>
-  `${buildContinentHeading(continent)} – Rankings for ${countriesCount} Countries`;
+export const buildContinentTitle = (
+  continent: Continent,
+  countriesCount: number,
+  year: number,
+) =>
+  `${buildContinentHeading(continent)} (${year}) – ${countriesCount} Country Rankings`;
 
 export const buildContinentDescription = (continent: Continent, countries: Country[]) =>
-  `Compare the most active GitHub users in ${countries.length} countries of ${continent.name}. See top open-source developers and commit rankings for each country.`;
+  `Who commits the most in ${continent.name}? Compare the most active GitHub users in ${countries.length} countries of ${continent.name} and open the full developer ranking for each one.`;
 
 export const buildContinentJsonLd = (
   continent: Continent,

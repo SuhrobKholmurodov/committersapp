@@ -53,7 +53,7 @@ const ContinentView = ({ continent }: { continent: Continent }) => {
     onLoadMore: loadMore,
   });
 
-  const title = buildContinentTitle(continent, countries.length);
+  const title = buildContinentTitle(continent, countries.length, new Date().getUTCFullYear());
   const description = buildContinentDescription(continent, countries);
   const jsonLd = useMemo(
     () => buildContinentJsonLd(continent, countries, title, description),

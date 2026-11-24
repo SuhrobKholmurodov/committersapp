@@ -1,4 +1,4 @@
-import { avatarUrl, type Committer } from "@/entities/committer";
+import { avatarUrl, sortCommitters, type Committer } from "@/entities/committer";
 import {
   continentName,
   continentPath,
@@ -10,6 +10,7 @@ import {
   type Country,
 } from "@/entities/country";
 import { AUTHOR, SITE_LANGUAGE } from "@/shared/config";
+import { formatMonthYear, formatShortDate } from "@/shared/lib/format";
 import {
   WEBSITE_ID,
   absoluteUrl,
@@ -19,33 +20,64 @@ import {
 import type { BreadcrumbItem } from "@/shared/ui/Breadcrumbs";
 
 const STRUCTURED_USERS_LIMIT = 10;
+const LEADERS_LIMIT = 3;
 const TITLE_LIMIT = 70;
 const DESCRIPTION_LIMIT = 160;
 
 export const buildCountryHeading = (country: Country) =>
   `Top GitHub Committers ${countryHeadingLocation(country)}`;
 
-export const buildCountryTitle = (country: Country, year: number) => {
-  const base = `${buildCountryHeading(country)} (${year})`;
-  const full = `${base} – Most Active Developers`;
-  return full.length <= TITLE_LIMIT ? full : base;
+export const buildCountryTitle = (
+  country: Country,
+  usersCount: number,
+  updatedAt: Date | null,
+) => {
+  const period = formatMonthYear(updatedAt ?? new Date());
+  const fallback = `${buildCountryHeading(country)} (${period})`;
+  if (usersCount === 0) return fallback;
+
+  const counted = `Top ${usersCount} GitHub Committers ${countryHeadingLocation(country)} (${period})`;
+  const candidates = [`${counted} – Most Active Users`, counted];
+
+  return candidates.find((text) => text.length <= TITLE_LIMIT) ?? fallback;
 };
 
-export const buildCountryDescription = (country: Country, users: Committer[]) => {
+const committerName = (user: Committer) => user.realname?.trim() || user.username;
+
+const joinNames = (names: string[]) =>
+  names.length > 1
+    ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+    : (names[0] ?? "");
+
+export const buildCountryDescription = (
+  country: Country,
+  users: Committer[],
+  updatedAt: Date | null,
+) => {
   const count = users.length;
-  const leader = users[0];
-  const subject = count > 0 ? `the ${count} most active GitHub users` : "the most active GitHub users";
-  const leaderText = leader ? `, led by ${leader.realname || leader.username}` : "";
-  const ranking = `Ranking of ${subject} ${countryLocation(country)} by public commits and contributions`;
-  const discover = ` Discover top open-source developers ${countryOrigin(country)}.`;
+  const location = countryLocation(country);
+
+  if (count === 0) {
+    return `Ranking of the most active GitHub users ${location} by public commits and contributions. Discover top open-source developers ${countryOrigin(country)}.`;
+  }
+
+  const leaders = sortCommitters(users, "commits-desc").slice(0, LEADERS_LIMIT).map(committerName);
+  const subject = `the ${count} most active GitHub users`;
+  const intro = `See who commits the most ${location}`;
+  const updated = updatedAt ? ` Updated ${formatShortDate(updatedAt)}.` : "";
+  const topNames = `${intro}: ${joinNames(leaders)} ${leaders.length > 1 ? "lead" : "leads"} ${subject}.`;
+  const topName = `${intro}: ${leaders[0]} leads ${subject}.`;
+  const plain = `Ranking of ${subject} ${location} by public commits and contributions.`;
 
   const candidates = [
-    `${ranking}${leaderText}.${discover}`,
-    `${ranking}${leaderText}.`,
-    `${ranking}.${discover}`,
+    `${topNames}${updated} Check your own rank.`,
+    `${topNames}${updated}`,
+    `${topName}${updated} Check your own rank.`,
+    `${topName}${updated}`,
+    `${plain}${updated}`,
   ];
 
-  return candidates.find((text) => text.length <= DESCRIPTION_LIMIT) ?? `${ranking}.`;
+  return candidates.find((text) => text.length <= DESCRIPTION_LIMIT) ?? plain;
 };
 
 export const buildCountryBreadcrumbs = (country: Country): BreadcrumbItem[] => {

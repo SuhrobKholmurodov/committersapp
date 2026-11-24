@@ -3,17 +3,21 @@ import { AUTHOR, SITE_LANGUAGE, SITE_NAME } from "@/shared/config";
 import { WEBSITE_ID, absoluteUrl, type JsonLdNode } from "@/shared/seo";
 import { buildFaqJsonLd, buildHomeFaq } from "./faq";
 
-export const HOME_TITLE = "Top GitHub Committers by Country – Global Developer Ranking";
+export const buildHomeTitle = (countriesCount: number, year: number) =>
+  countriesCount > 0
+    ? `Top GitHub Committers by Country (${year}) – ${countriesCount} Country Rankings`
+    : `Top GitHub Committers by Country (${year}) – Global Developer Ranking`;
 
 export const HOME_HEADING = "Top GitHub Contributors Worldwide";
 
 export const buildHomeDescription = (countriesCount: number) =>
   countriesCount > 0
-    ? `Explore the most active GitHub users in ${countriesCount} countries and regions. Compare commits, contributions and open-source leaders from around the world.`
-    : "Explore the most active GitHub users in every country. Compare commits, contributions and open-source leaders from around the world.";
+    ? `Who commits the most in your country? Rankings of the most active GitHub users in ${countriesCount} countries, by commits and contributions. Updated every few days.`
+    : "Who commits the most in your country? Rankings of the most active GitHub users in every country, by commits and contributions. Updated every few days.";
 
 export const buildHomeJsonLd = (
   countries: Country[],
+  title: string,
   description: string,
 ): JsonLdNode[] => {
   const url = absoluteUrl("/");
@@ -36,7 +40,7 @@ export const buildHomeJsonLd = (
       "@type": "CollectionPage",
       "@id": `${url}#webpage`,
       url,
-      name: HOME_TITLE,
+      name: title,
       description,
       inLanguage: SITE_LANGUAGE,
       isPartOf: { "@id": WEBSITE_ID },

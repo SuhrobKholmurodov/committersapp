@@ -110,8 +110,8 @@ const CountryView = ({ slug }: { slug: string }) => {
   }, [refetch]);
 
   const location = countryLocation(country);
-  const title = buildCountryTitle(country, (updatedAt ?? new Date()).getUTCFullYear());
-  const description = buildCountryDescription(country, users);
+  const title = buildCountryTitle(country, users.length, updatedAt);
+  const description = buildCountryDescription(country, users, updatedAt);
   const breadcrumbs = useMemo(() => buildCountryBreadcrumbs(country), [country]);
   const jsonLd = useMemo(
     () => buildCountryJsonLd({ country, title, description, users, updatedAt }),
